@@ -1,0 +1,26 @@
+name: GPT-OS Pipeline
+
+on:
+  repository_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Prepare environment
+        run: mkdir -p outputs
+
+      - name: Write file (write_file event)
+        if: github.event.event_type == 'write_file'
+        run: |
+          mkdir -p "$(dirname "${{ github.event.path }}")"
+          echo "${{ github.event.content }}" > "${{ github.event.path }}"
+
+      - name: Run analysis (run_analysis event)
+        if: github.event.event_type == 'run_analysis'
+        run: |
+          echo "analysis completed" > outputs/result.txt
