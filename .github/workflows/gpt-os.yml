@@ -2,25 +2,46 @@ name: GPT-OS Pipeline
 
 on:
   repository_dispatch:
+    types: [write_file, run_analysis]
 
 jobs:
-  run:
+  gpt-os:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Prepare environment
-        run: mkdir -p outputs
-
-      - name: Write file (write_file event)
-        if: github.event.event_type == 'write_file'
+      - name: Debug event
         run: |
-          mkdir -p "$(dirname "${{ github.event.path }}")"
-          echo "${{ github.event.content }}" > "${{ github.event.path }}"
+          echo "EVENT: ${{ github.event.action }}"
+          echo "PAYLOAD:"
+          echo '${{ toJson(github.event.client_payload) }}'
 
-      - name: Run analysis (run_analysis event)
-        if: github.event.event_type == 'run_analysis'
+      - name: Handle write_file
+        if: github.event.action == 'write_file'
         run: |
-          echo "analysis completed" > outputs/result.txt
+          FILE_PATH="${{ github.event.client_payload.path }}"
+          CONTENT="${{ github.event.client_payload.content }}"
+
+          echo "Writing file: $FILE_PATH"
+
+          mkdir -p "$(dirname "$FILE_PATH")"
+          printf "%s" "$CONTENT" > "$FILE_PATH"
+
+      - name: Handle run_analysis
+        if: github.event.action == 'run_analysis'
+        run: |
+          echo "Running analysis..."
+
+          mkdir -p outputs
+          echo "analysis complete $(date)" > outputs/result.txt
+
+      - name: Commit & push
+        run: |
+          git config user.name "gpt-os"
+          git config user.email "gpt-os@local"
+
+          git add .
+          git commit -m "GPT-OS update" || echo "No changes"
+          git push
